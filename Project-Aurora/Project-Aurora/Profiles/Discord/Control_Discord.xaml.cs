@@ -85,6 +85,96 @@ namespace Aurora.Profiles.Discord
             }
         }
 
+        private void PowercordPatchButton_Click(object sender, RoutedEventArgs e)
+        {
+            string profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            string pluginDirectory = Path.Combine(profile, "powercord", "src", "Powercord", "plugins");
+
+            if (!Directory.Exists(pluginDirectory))
+            {
+                MessageBox.Show("Error installing plugin: Unable to find a Powercord installation, you will need to manually install the plugin.");
+                return;
+			}
+            if (Directory.Exists(Path.Combine(pluginDirectory, "Aurora-GSI-Powercord")))
+            {
+                MessageBox.Show("Error installing plugin: The pluigin is already installed.");
+                return;
+            }
+            try
+            {
+                ClonePlugin(pluginDirectory);
+            }
+            catch (Exception er)
+            {
+                MessageBox.Show("Error installng plugin: " + er.Message);
+            }
+        }
+
+        private void PowercordUnpatchButton_Click(object sender, RoutedEventArgs e)
+        {
+            string profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            string pluginDirectory = Path.Combine(profile, "powercord", "src", "Powercord", "plugins");
+            string path = Path.Combine(pluginDirectory, "Aurora-GSI-Powercord");
+
+            if (Directory.Exists(path))
+            {
+                FixGitFolderPermissions(Path.Combine(path, ".git"));
+                Directory.Delete(path, true);
+                MessageBox.Show("Plugin uninstalled successfully");
+                return;
+            }
+            else
+            {
+                MessageBox.Show("Plugin not found.");
+                return;
+            }
+        }
+
+        private void PowercordManualPatchButton_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show("Select the Powercord plugins folder.");
+            using (var dialog = new System.Windows.Forms.FolderBrowserDialog())
+            {
+                if (dialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+                    return;
+
+                string pluginFile = Path.Combine(dialog.SelectedPath);
+                ClonePlugin(pluginFile);
+            }
+        }
+
+        private void ClonePlugin(string directory)
+		{
+            var gitCommandInfo = new ProcessStartInfo("git", "clone https://github.com/ADoesGit/Aurora-GSI-Powercord.git");
+            gitCommandInfo.WorkingDirectory = directory;
+
+            Process gitProcess = Process.Start(gitCommandInfo);
+            gitProcess.WaitForExit();
+
+            if (gitProcess.ExitCode != 0)
+            {
+                throw new Exception ("Git clone failed, you likely don't have Git installed.");
+            }
+            else
+            {
+                MessageBox.Show("Plugin installed successfully");
+                return;
+            }
+        }
+
+        private void FixGitFolderPermissions(string directory)
+        {
+            foreach (var subdirectory in Directory.EnumerateDirectories(directory))
+            {
+                FixGitFolderPermissions(subdirectory);
+            }
+            foreach (var fileName in Directory.EnumerateFiles(directory))
+            {
+                var fileInfo = new FileInfo(fileName);
+                fileInfo.Attributes = FileAttributes.Normal;
+            }
+        }
+
         private void WriteFile(string pluginFile)
         {
             if (File.Exists(pluginFile))
